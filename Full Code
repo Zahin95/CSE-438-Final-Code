@@ -1,0 +1,214 @@
+import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'registration_page.dart';
+import 'meal_management_page.dart';
+import 'expense_management_page.dart';
+
+void main() {
+  runApp(MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Flat Meal Manager',
+      theme: ThemeData(primarySwatch: Colors.blue),
+      home: LoginPage(),
+    );
+  }
+}
+
+class LoginPage extends StatelessWidget {
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final GoogleSignIn _googleSignIn = GoogleSignIn(scopes: ['email']);
+
+  Future<User?> _handleSignIn(BuildContext context) async {
+    try {
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      if (googleUser != null) {
+        final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+        final AuthCredential credential = GoogleAuthProvider.credential(
+          accessToken: googleAuth.accessToken,
+          idToken: googleAuth.idToken,
+        );
+        final UserCredential authResult = await _auth.signInWithCredential(credential);
+        return authResult.user;
+      }
+    } catch (error) {
+      print("Google Sign-In error: $error");
+    }
+    return null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('Login')),
+      body: Center(
+        child: ElevatedButton(
+          onPressed: () async {
+            User? user = await _handleSignIn(context);
+            if (user != null) {
+              Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => HomeScreen()));
+            }
+          },
+          child: Text('Sign in with Google'),
+        ),
+      ),
+    );
+  }
+}
+
+class HomeScreen extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('Dashboard')),
+      body: Column(
+        children: [
+          Text('Upcoming Meals:'),
+          // Implement the logic to display upcoming meals here
+          Text('Expenses:'),
+          // Implement the logic to display expenses here
+          SizedBox(height: 20),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.push(context, MaterialPageRoute(builder: (context) => MealManagementPage()));
+            },
+            child: Text('Manage Meals'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.push(context, MaterialPageRoute(builder: (context) => ExpenseManagementPage()));
+            },
+            child: Text('Manage Expenses'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+lib/registration_page.dart:
+import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
+class RegistrationPage extends StatelessWidget {
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+
+  Future<void> _registerUser(BuildContext context) async {
+    try {
+      final String email = _emailController.text.trim();
+      final String password = _passwordController.text;
+
+      final UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      if (userCredential.user != null) {
+        Navigator.pop(context); // Close the registration page
+      }
+    } catch (error) {
+      print("Registration error: $error");
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('Register')),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            TextField(controller: _emailController, decoration: InputDecoration(labelText: 'Email')),
+            TextField(controller: _passwordController, decoration: InputDecoration(labelText: 'Password')),
+            SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () => _registerUser(context),
+              child: Text('Register'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+lib/meal_management_page.dart:
+import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+class MealManagementPage extends StatefulWidget {
+  @override
+  _MealManagementPageState createState() => _MealManagementPageState();
+}
+
+class _MealManagementPageState extends State<MealManagementPage> {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  Future<void> _createMeal() async {
+    try {
+      await _firestore.collection('meals').add({
+        'title': 'New Meal',
+        'dateTime': DateTime.now(),
+      });
+    } catch (error) {
+      print("Error creating meal: $error");
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('Meal Management')),
+      body: Center(
+        child: ElevatedButton(
+          onPressed: _createMeal,
+          child: Text('Create Meal'),
+        ),
+      ),
+    );
+  }
+}
+lib/expense_management_page.dart:
+
+import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+class ExpenseManagementPage extends StatefulWidget {
+  @override
+  _ExpenseManagementPageState createState() => _ExpenseManagementPageState();
+}
+class _ExpenseManagementPageState extends State<ExpenseManagementPage> {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  Future<void> _createExpense() async {
+    try {
+      await _firestore.collection('expenses').add({
+        'description': 'New Expense',
+        'amount': 0.0,
+      });
+    } catch (error) {
+      print("Error creating expense: $error");
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('Expense Management')),
+      body: Center(
+        child: ElevatedButton(
+          onPressed: _createExpense,
+          child: Text('Create Expense'),
+        ),
+      ),
+    );
+  }
+}
